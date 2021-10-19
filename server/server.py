@@ -1,24 +1,24 @@
 import socket 
-import thread
+import _thread as thread
 import os
 
 def forwardMsg(msgTo,clients,msgFrom,msg):
-    while not (clients.has_key(msgTo)):
+    while not (msgTo in clients):
         continue    #do nothing
-    clients[msgTo].send(msgFrom + ':' + msg)
+    clients[msgTo].send((msgFrom + ':' + msg).encode())
 
 def replyMsg(client,message):
-    client.send(message+"'s'")
-    msg = client.recv(1024)
+    client.send((message+"'s'").encode())
+    msg = client.recv(1024).decode()
     if msg == 'resend':
-        client.send(message+"'s'")
-        msg = client.recv(1024)
+        client.send((message+"'s'").encode())
+        msg = client.recv(1024).decode()
 
 def sendFile(msgTo,clients,msgFrom,fileName):
 
-    while not (clients.has_key(msgTo)):
+    while not (msgTo in clients):
         continue
-    clients[msgTo].send(msgFrom + ':' + fileName + "'f'")
+    clients[msgTo].send((msgFrom + ':' + fileName + "'f'").encode())
 
     sendFile = open(fileName, "rb")
     sRead = sendFile.read(1024)
@@ -26,26 +26,26 @@ def sendFile(msgTo,clients,msgFrom,fileName):
         clients[msgTo].send(sRead)
         sRead = sendFile.read(1024)
     sendFile.close()
-    clients[msgTo].send("'''D'''")
+    clients[msgTo].send(("'''D'''").encode())
 
 def receiveFile(client,fileName):
     rData = "Temp"
-    rData = client.recv(1024)
+    rData = client.recv(1024).decode()
     recFile = open(fileName, 'wb')
     while rData:
         if "'''D'''" in rData:
             recFile.write(rData[:-7])
             break
         recFile.write(rData)
-        rData = client.recv(1024)
+        rData = client.recv(1024).decode()
     recFile.close()
 
 def func(client, addr, name, clients):
-    print "connected to:  ", name,addr,'\n'
-    print "ACTIVE USERS: ", clients.keys(),'\n'
+    print("connected to:  ", name,addr)
+    print("ACTIVE USERS: ", clients.keys())
 
     while True:
-        string = client.recv(1024)
+        string = client.recv(1024).decode()
 
         users = open('userData.txt', 'r')
         userList = users.readlines()
@@ -54,23 +54,23 @@ def func(client, addr, name, clients):
         users.close()
 
         if string == 'disconnect':
-            print name,addr, " disconnected"
+            print(name,addr, " disconnected")
             del clients[name]
             client.close()
-            print "ACTIVE USERS: " ,clients.keys(),'\n'
+            print("ACTIVE USERS: " ,clients.keys(),'\n')
             break
         elif string == 'getStatus':
             status=''
             for user in userList:
                 if user!=name:
-                    if clients.has_key(user):
+                    if user in clients:
                         status=status+user+'(Online)\n'
                     else:
                         status=status+user+'(Offline)\n'
             replyMsg(client,status)
             continue
         elif string == 'newGroup':
-            group = client.recv(1024)
+            group = client.recv(1024).decode()
             i = group.index(':')
             grpNme = group[:i]
             members=(group[i+1:]).split()
@@ -83,7 +83,7 @@ def func(client, addr, name, clients):
             replyMsg(client, 'Group created')
             continue
         elif string == 'getGroup':
-            grpNme = client.recv(1024)
+            grpNme = client.recv(1024).decode()
             if (grpNme+'.txt') not in os.listdir('C:/Users/Hashim zaidi/PycharmProjects/.idea/server'):
                 replyMsg(client,'No group found')
                 continue
@@ -98,7 +98,7 @@ def func(client, addr, name, clients):
 
             g = open(grpNme + '.txt', 'w')
             while True:
-                msg = client.recv(1024)
+                msg = client.recv(1024).decode()
                 if(msg=='Exit'):
                     break
                 elif msg == 'leaveGroup':
@@ -113,7 +113,7 @@ def func(client, addr, name, clients):
                     break
                 elif msg =='addRemoveMember':
                     while True:
-                        msg = client.recv(1024)
+                        msg = client.recv(1024).decode()
                         if msg=='Exit':
                             break
                         i = msg.index(':')
@@ -139,7 +139,7 @@ def func(client, addr, name, clients):
                             replyMsg(client,'You removed '+member)
                 elif msg =='makeAdmin':
                     while True:
-                        ad = client.recv(1024)
+                        ad = client.recv(1024).decode()
                         if ad =='Exit':
                             break
                         if (ad+'(admin)') in members:
@@ -161,8 +161,8 @@ def func(client, addr, name, clients):
         string=string[:i]
 
         if "'m'" in msg:
-            if clients.has_key(string) and string != name:
-                clients[string].send(name+':' +msg)
+            if string in clients and string != name:
+                clients[string].send((name+':' +msg).encode())
                 replyMsg(client,'Sent')
             elif (string in userList) and string!=name:
                 thread.start_new_thread(forwardMsg,(string,clients,name,msg))
@@ -185,7 +185,7 @@ def func(client, addr, name, clients):
             else:
                 replyMsg(client,'Error sending message')
         elif "'f'" in msg:
-            if clients.has_key(string) and string != name:
+            if string in clients and string != name:
                 fileName = msg[:-3]
                 receiveFile(client,fileName)
                 sendFile(string,clients,name,fileName)
@@ -225,14 +225,14 @@ def Main():
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((host,port))
         s.listen(5) # max number of connections
-        print "Waiting for new connections"
+        print("Waiting for new connections")
 
         while True:
                 client, addr = s.accept()
-
+                
                 users = open("userData.txt", "a+")
                 newUser = 1
-                client_name = client.recv(1024)
+                client_name = client.recv(1024).decode()
                 fRead = users.readline()
                 while(fRead):
                     if fRead[:-1]==client_name:
