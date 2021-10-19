@@ -18,5 +18,4 @@
 4. Save it.
 
 ## Note:
-* Follow the instructions on the screen to correctly run the app
-* The code for this app was written in python 2.7.6 and so might not run for python 3   
+* Follow the instructions on the screen to correctly run the app 
