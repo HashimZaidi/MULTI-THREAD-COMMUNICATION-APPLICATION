@@ -1,7 +1,7 @@
 import socket
 import pickle
 import _thread as thread
-import os
+from os.path import join
 
 
 class user_props:
@@ -17,15 +17,17 @@ class user_props:
 
 
 class server:
+    _users_data_file_name = "users_data.txt"
+
     def __init__(
-        self, ip, port, max_users=5, users_data_file_path="/tmp/users_data.txt"
+        self, ip, port, max_users=5, users_data_dir="/tmp"
     ):
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((ip, port))
         self.socket.listen(max_users)
         self.online_users = {}
-        self.users_data_file_path = users_data_file_path
+        self.users_data_file_path = join(users_data_dir, self._users_data_file_name)
 
     def listen_and_serve(self):
         print("Waiting for new connections")
