@@ -1,241 +1,105 @@
 import socket
+import pickle
 from threading import Thread
+import re
 
 
 class user:
-    def __init__(self, n):
-        self.name = n
+    def __init__(self, name, ip, port, max_contacts=5):
+        self.name = name
+        self.server_socket = socket.socket()
+        self.client_send_socket = socket.socket()
+        self.client_recv_socket = socket.socket()
+        self.client_recv_socket.bind((ip, port))
+        self.client_recv_socket.listen(max_contacts)
 
-    def getName(self):
-        return self.name
+    def connect_to_server(self, ip, port):
+        self.server_socket.connect((ip, port))
+        self.server_socket.send(self.name.encode())
+        self.server_socket.recv(1024)
+        addr = self.client_recv_socket.getsockname()
+        self.server_socket.send(pickle.dumps(addr))
+        print(f"***{self.name} is now connected to the server***")
 
-    def goOnline(self, ip, port):
-        s = socket.socket()
-        s.connect((ip, port))
-        s.send(self.getName().encode())
-        print("***You are now Online***\n")
-        return s
+    def disconnect_from_server(self):
+        print("Disconnecting...")
+        self.server_socket.send("disconnect".encode())
+        self.server_socket.close()
 
-    def goOffline(self, s):
-        print( 'Going Offline...')
-        s.send("disconnect".encode())
+    def __resolve_user_name(self, name):
+        self.server_socket.send("resolve_name".encode())
+        self.server_socket.recv(1024)
+        self.server_socket.send(name.encode())
+        return pickle.loads(self.server_socket.recv(1024))
 
-
-def receive(s):
-    while True:
-        string = s.recv(1024).decode()
-        if len(string) == 0:
-            return
-
-        if "'s'" in string:
-            s.send('resend'.encode())
-            continue
-
-        i = string.index(':')
-
-        if "'f'" in string:
-            fileFrom = string[:i]
-            fileName = string[i + 1:-3]
-            rData = "Temp"
-            rData = s.recv(1024).decode()
-            recFile = open(fileName, 'wb')
-            while rData:
-                if "'''D'''" in rData:
-                    recFile.write(rData[:-7])
-                    break
-                recFile.write(rData)
-                rData = s.recv(1024).decode()
-            recFile.close()
-            print( fileFrom + " sent " + fileName)
-            continue
-        elif "'m'" in string:
-            msg = string[i + 1:-3] + '\n'
-            msgFrom = string[:i]
-            fileName = msgFrom + ".txt"
-            user = open(fileName, "a")
-            if ':' in msg:
-                j=msg.index(':')
-                name = msg[:j]
-                msgFrom = name + '(' + msgFrom + ')'
+    def send_msg_to_user(self, user, msg):
+        try:
+            ip, port = self.__resolve_user_name(user)
+            if ip and port:
+                client_send_socket = socket.socket()
+                client_send_socket.connect((ip, port))
+                client_send_socket.send(f"{self.name}: {msg}".encode())
+                client_send_socket.close()
+                return "True"
             else:
-                msg = string[:-3] + '\n'
-            user.write(msg)
-            print(  "New message from " + msgFrom )
-            user.close()
+                print(f"Either {user} does not exists or is not online")
+                return False
+        except Exception as e:
+            print(e)
+            return False
 
-
-def Main():
-    U = user('user2')
-    ip = '127.0.0.1'
-    port = 8000
-
-    s = U.goOnline(ip, port)
-    t1 = Thread(target=receive, args=(s,))
-    t1.start()
-    while True:
-        print( "Enter 1 to send message\n"
-              + "Enter 2 to send file\n"
-              + "Enter 3 to view messages\n"
-              + "Enter 4 to create/view group(s)\n"
-              + "Enter 5 to view who's online/offline\n"
-              + "Enter 6 to exit")
-        choice = input()
-
-        if (choice == '1'):
-            print( "Enter in the following format:\n" +
-                   "'Name:Message'\n" +
-                   "or Enter Exit to the main menu")
+    def listen(self):
+        try:
             while True:
-                text = input()
+                user_socket, _ = self.client_recv_socket.accept()
+                msg = user_socket.recv(1024).decode()
+                print(msg)
+                user_socket.close()
+        except ConnectionAbortedError:
+            pass
 
-                if text == 'Exit':
-                    break
-                else:
-                    s.send((text+ "'m'").encode())
-                    string = s.recv(1024).decode()
-                    s.send("OK".encode())
-                    print( string[:-3])
-                    if string[:-3]=='Sent':
-                        i=text.index(':')
-                        msgTo=text[:i]
-                        msg=text[i+1:] + '\n'
-                        f = open(msgTo+'.txt','a')
-                        f.write('Me:'+msg)
-                        f.close()
-        elif (choice == '2'):
-            print(  "Enter in the following format:\n" +
-                   "'Name:File_Name'\n" +
-                   "or Enter Exit to main menu" )
-            while True:
-                fileName = input()
-
-                if fileName == 'Exit':
-                    break
-
-                s.send((fileName + "'f'").encode())
-
-                i = fileName.index(':')
-                fileName = fileName[i + 1:]
-
-                sendFile = open(fileName, "rb")
-                sRead = sendFile.read(1024)
-                while sRead:
-                    s.send(sRead)
-                    sRead = sendFile.read(1024)
-                sendFile.close()
-                s.send("'''D'''".encode())
-                string = s.recv(1024).decode()
-                s.send("OK".encode())
-                print(  string[:-3] )
-        elif (choice == '3'):
-            print(  "Enter the name of the person/group\n" +
-                   "who's messages you want to view\n" +
-                   "or Enter Exit to main menu" )
-            while True:
-                p_name = input()
-                if p_name == 'Exit':
-                    break
-                else:
-                    f = open(p_name + '.txt', 'r')
-                    msgs = f.readline()
-                    while (msgs):
-                        print(  msgs[:-1] )
-                        msgs = f.readline()
-                    print(  '')  
-        elif (choice == '4'):
-            while True:
-                print(  "Enter 1 to create a new group\n" \
-                      +"Enter 2 to view an existing group\n" \
-                       +"or Enter Exit to main menu" )
-                opt=input()
-                if opt=='1':
-                    s.send('newGroup'.encode())
-                    print(  "Enter a name for the new group\n" \
-                          +"in the following format\n" \
-                           +"GroupName:Member1(space)Member2..." )
-                    group = input()
-                    s.send(group.encode())
-                    ack = s.recv(1024).decode()
-                    s.send('ack'.encode())
-                    print( ack[:-3] )
-                elif opt=='2':
-                    s.send('getGroup'.encode())
-                    print(  "Enter the name of the\n" \
-                        +"group you want to view" )
-                    groupName =input()
-                    s.send(groupName.encode())
-                    members = s.recv(1024).decode()
-                    s.send('ack'.encode())
-                    print(  members[:-3] )
-                    if members == "No group found's'":
-                        continue
-                    while True:
-                        print(  "Enter 1 to leave group" )
-                        if (U.getName()+'(admin)') in members:
-                            print( "Enter 2 to add/remove a member\n" \
-                                 +"Enter 3 to make another member an admin" )
-                        print( "Enter Exit to go back" )
-                        ch = input()
-                        if ch=='1':
-                            s.send('leaveGroup'.encode())
-                            print( 'You left the group'.encode() )
-                            break
-                        elif ch=="Exit":
-                            s.send('Exit'.encode())
-                            break
-
-                        if (U.getName() + '(admin)') in members:
-                            if  ch=='2':
-                                s.send('addRemoveMember'.encode())
-                                print( "Enter the name of the friend you\n" \
-                                      +"want to add/remove in/from the\n" \
-                                      +" group in the following format:\n" \
-                                      +"Add/Remove:MemberName\n" \
-                                      +"or Enter Exit to go back" )
-                                while True:
-                                    m = input()
-                                    if m=='Exit':
-                                        s.send('Exit'.encode())
-                                        break
-                                    s.send(m.encode())
-                                    ack = s.recv(1024).decode()
-                                    s.send('ack'.encode())
-                                    print( ack[:-3] )
-                            elif ch=='3':
-                                s.send('makeAdmin'.encode())
-                                print( "Enter the name of the member\n" \
-                                      +"you want to make admin of the\n" \
-                                      +"group or Enter Exit to go back" )
-                                while True:
-                                    c= input()
-                                    if c=='Exit':
-                                        s.send('Exit'.encode())
-                                        break
-                                    s.send(c.encode())
-                                    ack = s.recv(1024).decode()
-                                    s.send('ack'.encode())
-                                    print( ack[:-3] )
-                        else:
-                            print( "Invalid Input!" )
-                elif opt=='Exit':
-                    break
-        elif (choice == '5'):
-            s.send("getStatus".encode())
-            status = s.recv(1024).decode()
-            s.send("OK".encode())
-            print( status[:-3] )
-            print("Enter Exit to go back" )
-            opt='temp'
-            while opt!='Exit':
-                opt = input()
-
-        elif (choice == '6'):
-            U.goOffline(s)
-            t1.join()
-            break
-
-    s.close()
+    def get_users_status(self):
+        self.server_socket.send("get_status".encode())
+        return pickle.loads(self.server_socket.recv(1024))
 
 
 if __name__ == "__main__":
-    Main()
+    u = user("user2", "127.0.0.1", 8002)
+    u.connect_to_server("127.0.0.1", 8000)
+    listen = Thread(target=u.listen)
+    listen.start()
+    while True:
+        usr_inp = input(
+            "Enter 1 to send message\n"
+            + "Enter 2 to view who's online/offline\n"
+            + "Enter 3 to exit\n"
+        )
+        if usr_inp == "1":
+            while True:
+                usr_inp = input(
+                    "Enter in the following format:\n"
+                    + "'Name:Message'\n"
+                    + "or Enter Exit to the main menu\n"
+                )
+                if usr_inp == "Exit":
+                    break
+                match = re.match("^\w+:.+$", usr_inp)
+                if bool(match):
+                    i = usr_inp.index(":")
+                    name = usr_inp[:i]
+                    msg = usr_inp[i + 1 :]
+                    msg_sent = u.send_msg_to_user(name, msg)
+                    print("Sent") if msg_sent else print(
+                        f"Unable to send msg to {name}"
+                    )
+                else:
+                    print("Invalid Format")
+        elif usr_inp == "2":
+            print(u.get_users_status())
+        elif usr_inp == "3":
+            u.disconnect_from_server()
+            u.client_recv_socket.close()
+            listen.join()
+            break
+        else:
+            print("Invalid option")
