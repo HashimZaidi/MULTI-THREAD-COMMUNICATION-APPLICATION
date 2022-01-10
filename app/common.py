@@ -1,4 +1,20 @@
+from enum import Enum
 import logging
+
+
+def serialize(inp):
+    return inp.encode()
+
+
+def deserialize(inp):
+    return inp.decode()
+
+
+class Signal(Enum):
+    DISCONNECT = "1"
+    RESOLVE_NAME = "2"
+    GET_STATUS = "3"
+    ACK = "4"
 
 
 def configure_logging(debug=False):

@@ -80,14 +80,14 @@ def client(name, port, server_ip, server_port, debug):
                 log.info(c.get_clients_status())
             elif usr_inp == "3":
                 c.disconnect_from_server()
-                c.client_recv_socket.close()
-                listen.join()
+                c.stop_listening()
                 break
             else:
                 print("Invalid option")
     except Exception as e:
         log.error(f"Lost connection to the server. {str(e)}")
-        c.client_recv_socket.close()
+        c.stop_listening()
+    listen.join()
 
 
 if __name__ == "__main__":

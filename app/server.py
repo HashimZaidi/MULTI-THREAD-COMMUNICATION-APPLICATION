@@ -2,7 +2,7 @@ import socket
 import pickle
 import _thread as thread
 from os.path import join
-from app.logger import configure_logging
+from app.common import configure_logging, serialize, deserialize, Signal
 
 
 class client_props:
@@ -21,9 +21,7 @@ class server:
     _clients_data_file_name = "clients_data.txt"
 
     def __init__(self, port, debug=False, clients_data_dir="/tmp", max_clients=5):
-        self.socket = socket.socket()
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind(("", port))
+        self.socket = socket.create_server(("", port))
         self.socket.listen(max_clients)
         self.online_clients = {}
         self.clients_data_file_path = join(
@@ -36,14 +34,16 @@ class server:
         while True:
             client_socket, _ = self.socket.accept()
             self.log.debug(f"New connection: {client_socket}")
-            client_name = client_socket.recv(1024).decode()
-            self.log.debug(f"{client_socket} is trying to register with the name, {client_name}.")
+            client_name = deserialize(client_socket.recv(1024))
+            self.log.debug(
+                f"{client_socket} is trying to register with the name, {client_name}."
+            )
             if client_name in self.online_clients.keys():
                 self.log.debug(f"Another client exists with the name, {client_name}.")
                 client_socket.close()
                 continue
             else:
-                client_socket.send("ack".encode())
+                client_socket.send(serialize(Signal.ACK.value))
             addr = pickle.loads(client_socket.recv(1024))
             self.register_client(client_name)
             self.online_clients[client_name] = client_props(client_socket, addr)
@@ -79,21 +79,21 @@ class server:
         client_socket = self.online_clients[client_name].get_socket()
         while True:
             try:
-                sgnl = client_socket.recv(1024).decode()
+                sgnl = deserialize(client_socket.recv(1024))
 
                 if sgnl == "":
                     raise ConnectionError
 
                 self.log.info(f"{client_name}: {sgnl}")
-                if sgnl == "disconnect":
+                if sgnl == Signal.DISCONNECT.value:
                     self.log.info(f"{client_name} disconnected")
                     del self.online_clients[client_name]
                     client_socket.close()
                     self.log.info(f"ACTIVE CLIENTS: {list(self.online_clients.keys())}")
                     break
-                elif sgnl == "resolve_name":
-                    client_socket.send("ack".encode())
-                    name = client_socket.recv(1024).decode()
+                elif sgnl == Signal.RESOLVE_NAME.value:
+                    client_socket.send(serialize(Signal.ACK.value))
+                    name = deserialize(client_socket.recv(1024))
                     self.log.info(f"Resolving {name} ...")
                     if name in self.online_clients:
                         addr = self.online_clients[name].get_addr()
@@ -103,7 +103,7 @@ class server:
                     else:
                         self.log.info("Client not found/online.")
                         client_socket.send(pickle.dumps((None, None)))
-                elif sgnl == "get_status":
+                elif sgnl == Signal.GET_STATUS.value:
                     clients_status = self.check_clients_status()
                     client_socket.send(pickle.dumps(clients_status))
                 else:
