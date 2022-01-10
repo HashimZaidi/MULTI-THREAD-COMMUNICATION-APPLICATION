@@ -1,1 +1,31 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+import click
+from app.server import server as Server
+
+
+@click.command()
+@click.option(
+    "--port",
+    "-p",
+    help="Port on which the server will listen for requests",
+    default=8000,
+)
+@click.option(
+    "--debug",
+    "-v",
+    is_flag=True,
+    help="Enable debug mode",
+    default=False,
+)
+def server(port,debug):
+    """
+    A server that listens for clients on a given port and lets them communicate with each other via sockets.
+    """
+
+    s = Server(port, debug)
+    s.listen_and_serve()
+
+
+if __name__ == "__main__":
+    server()
