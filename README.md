@@ -1,21 +1,73 @@
-# MULTI-THREAD-COMMUNICATION-APPLICATION
+# Messaging Application
+This is a simple messaging application, based on client-server architecture. Multiple clients send and receive messages via a single server using sockets.
 
-### How to run the Server?:
+## Installation
+To install locally, do the following:
 
-1. Change directory to the server folder
-2. Run the command "python server.py"
+1. Ensure that the following things have been installed:
 
-### How to run a Client?:
+    a. python (Installed based on your distro)
 
-1. Change directory to any of the user folders.
-2. Run the command "python client.py"
+    b. pip (curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python get-pip.py)
 
-### How to create a new Client?:
+    c. virtualenv
 
-1. Make a new folder and name it to the name of the user(or you can name it anything).
-2. Copy the client.py file from any other user folder and paste it in this new folder.
-3. Open the client.py folder, go to line 68 and change the name of the user to whatever you want.
-4. Save it.
+2. Open up a terminal.
 
-## Note:
-* Follow the instructions on the screen to correctly run the app 
+3. Create a directory somewhere `mkdir messaging-app-env` and `cd` into it.
+
+4. Create a python virtual environment `python -m virtualenv .`
+
+5. Activate the virtual environment `source bin/activate`
+
+6. Navigate to the project's root directory where `setup.py` file is located.
+
+7. Do a ```pip install .``` 
+
+## How to run the Server?:
+
+Once the installation is complete, you can run the server by running the command: `server` . The server would start listening for clients at port 8000. You can change the port by adding the flag `--port` to the command. Eg. `server --port 8888`
+
+For more information, run `server --help`
+
+## How to run a Client?:
+
+Once the server is up, you may run a client using the following command:
+
+```
+$ client --name client1 --port 8001 --server-ip 127.0.0.1 --server-port 8000
+2022-02-20 10:36:07,305 — client1 is now connected to the server
+Enter 1 to send message
+Enter 2 to view who's online/offline
+Enter 3 to exit
+```
+
+Similarly, using the above command, you can run more clients with different names and ports.
+
+Follow the instructions to send messages or see who's online.
+
+For more information, run `client --help`
+
+## Docker
+
+Build the server and client Dockerfiles using the following commands:
+
+```
+docker build --file docker/server.Dockerfile -t messaging-app:server .
+```
+
+```
+docker build --file docker/client.Dockerfile -t messaging-app:client .
+```
+
+To run a server using docker, run the following command:
+
+```
+docker run --rm -e PORT=8000 messaging-app:server
+```
+
+To run a client using docker, run the following command:
+
+```
+docker run --rm -it -e NAME=client1 -e PORT=8000 -e SERVER_IP=172.17.0.2 -e SERVER_PORT=8000  messaging-app:client
+```

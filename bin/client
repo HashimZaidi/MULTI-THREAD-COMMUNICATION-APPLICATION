@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+import click
+from app.client import client as Client
+from threading import Thread
+import re
+
+
+@click.command()
+@click.option(
+    "--name",
+    "-n",
+    help="Name of the client",
+    required=True,
+)
+@click.option(
+    "--port",
+    "-p",
+    help="Port on which the client will listen for messages from other clients",
+    type=click.INT,
+    required=True,
+)
+@click.option(
+    "--server-ip",
+    "-i",
+    help="Ip Address of the the server",
+    required=True,
+)
+@click.option(
+    "--server-port",
+    "-P",
+    help="Port on which the server is running",
+    type=click.INT,
+    required=True,
+)
+@click.option(
+    "--debug",
+    "-v",
+    is_flag=True,
+    help="Enable debug mode",
+    default=False,
+)
+def client(name, port, server_ip, server_port, debug):
+    """
+    A client that registers itself to a valid server through the given server port. It can send or receive messages to and from other clients.
+    """
+
+    c = Client(name, port, debug)
+    log = c.get_logger()
+    connected = c.connect_to_server(server_ip, server_port)
+    if not connected:
+        exit(1)
+    listen = Thread(target=c.listen)
+    listen.start()
+    try:
+        while True:
+            usr_inp = input(
+                "Enter 1 to send message\n"
+                + "Enter 2 to view who's online/offline\n"
+                + "Enter 3 to exit\n"
+            )
+            if usr_inp == "1":
+                while True:
+                    usr_inp = input(
+                        "Enter in the following format:\n"
+                        + "'Name:Message'\n"
+                        + "or Enter Exit to the main menu\n"
+                    )
+                    if usr_inp == "Exit":
+                        break
+                    match = re.match("^\w+:.+$", usr_inp)
+                    if bool(match):
+                        i = usr_inp.index(":")
+                        client_name = usr_inp[:i]
+                        msg = usr_inp[i + 1 :]
+                        c.send_msg_to_client(client_name, msg)
+                    else:
+                        print("Invalid Format")
+            elif usr_inp == "2":
+                log.info(c.get_clients_status())
+            elif usr_inp == "3":
+                c.disconnect_from_server()
+                c.stop_listening()
+                break
+            else:
+                print("Invalid option")
+    except Exception as e:
+        log.error(f"Lost connection to the server. {str(e)}")
+        c.stop_listening()
+    listen.join()
+
+
+if __name__ == "__main__":
+    client()
