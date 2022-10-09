@@ -19,6 +19,8 @@ class Signal(Enum):
 
 def configure_logging(debug=False):
     log = logging.getLogger("default")
+    if log.hasHandlers():
+        return log
     if debug:
         level = logging.DEBUG
     else:
