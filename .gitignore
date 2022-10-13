@@ -1,4 +1,4 @@
 .vscode
-*.egg-info
+*.egg*
 build
 __pycache__
