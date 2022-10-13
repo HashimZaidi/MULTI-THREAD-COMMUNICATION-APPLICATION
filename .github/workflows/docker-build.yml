@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Build the server Docker image
-      run: docker build --file docker/server.Dockerfile --tag messaging-app:server .
-    - name: Build the client Docker image
-      run: docker build --file docker/client.Dockerfile --tag messaging-app:client .
+    - name: Build the Docker image
+      run: docker build --file docker/Dockerfile --tag messaging-app .
+    - name: Run unit tests
+      run: docker run --rm --entrypoint=/bin/sh messaging-app -c "python setup.py test"

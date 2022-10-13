@@ -50,24 +50,20 @@ For more information, run `client --help`
 
 ## Docker
 
-Build the server and client Dockerfiles using the following commands:
+Build the Dockerfile using the following commands:
 
 ```
-docker build --file docker/server.Dockerfile -t messaging-app:server .
-```
-
-```
-docker build --file docker/client.Dockerfile -t messaging-app:client .
+docker build --file docker/Dockerfile -t messaging-app:server .
 ```
 
 To run a server using docker, run the following command:
 
 ```
-docker run --rm -e PORT=8000 messaging-app:server
+docker run --rm -it -e PORT=8000 messaging-app
 ```
 
 To run a client using docker, run the following command:
 
 ```
-docker run --rm -it -e NAME=client1 -e PORT=8000 -e SERVER_IP=172.17.0.2 -e SERVER_PORT=8000  messaging-app:client
+docker run --rm -it -e NAME=client1 -e PORT=8001 -e SERVER_IP=<ip-of-server-container> -e SERVER_PORT=8000 messaging-app client
 ```
