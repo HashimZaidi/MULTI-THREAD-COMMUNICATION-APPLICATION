@@ -53,7 +53,7 @@ For more information, run `client --help`
 Build the Dockerfile using the following commands:
 
 ```
-docker build --file docker/Dockerfile -t messaging-app:server .
+docker build --file docker/Dockerfile -t messaging-app .
 ```
 
 To run a server using docker, run the following command:
